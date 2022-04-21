@@ -1,0 +1,530 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: "SPL: Introduction to IAM"
+Parameters:
+  KeyName:
+    Description: Name of an existing EC2 KeyPair
+    Type: String
+  Bucket:
+    Default: aws-training
+    Description: Bucket for staged assets.
+    Type: String
+  Prefix:
+    Default: spl66-intro-iam/
+    Description: Prefix for staged assets.
+    Type: String
+  PublicSubnet1Param:
+    Description: Public Subnet 1
+    Type: String
+    Default: 10.1.11.0/24
+    AllowedValues:
+      - 10.1.11.0/24
+  VPCCIDR:
+    Description: CIDR Block for VPC
+    Type: String
+    Default: 10.1.0.0/16
+    AllowedValues:
+      - 10.1.0.0/16
+  InstanceType:
+    Default: t2.micro
+    Description: "EC2 instance type, e.g. m1.small, m1.large, etc."
+    Type: String
+  AmazonLinuxAMIID:
+    Type: "AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>"
+    Default: /aws/service/ami-amazon-linux-latest/amzn2-ami-hvm-x86_64-gp2
+Resources:
+  VPC:
+    Type: "AWS::EC2::VPC"
+    Properties:
+      CidrBlock: !Ref VPCCIDR
+      EnableDnsSupport: "true"
+      EnableDnsHostnames: "true"
+      Tags:
+        - Key: Name
+          Value: Lab VPC
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 05e33ba1-a0a7-4885-8aab-0683ea448a16
+  InternetGateway:
+    Type: "AWS::EC2::InternetGateway"
+    DependsOn: VPC
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 08032085-6bdb-403d-98d0-e28c59310d40
+  AttachGateway:
+    Type: "AWS::EC2::VPCGatewayAttachment"
+    DependsOn:
+      - VPC
+      - InternetGateway
+    Properties:
+      VpcId: !Ref VPC
+      InternetGatewayId: !Ref InternetGateway
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: bbd16bec-ee4d-4094-9691-40afd6c2cb0c
+  PublicSubnet1:
+    Type: "AWS::EC2::Subnet"
+    DependsOn: AttachGateway
+    Properties:
+      VpcId: !Ref VPC
+      MapPublicIpOnLaunch: "true"
+      CidrBlock: !Ref PublicSubnet1Param
+      AvailabilityZone: !Select
+        - "0"
+        - !GetAZs ""
+      Tags:
+        - Key: Name
+          Value: Public Subnet 1
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 8b5364e0-21dc-4c98-9095-e152d27d733e
+  PublicRouteTable:
+    Type: "AWS::EC2::RouteTable"
+    DependsOn:
+      - VPC
+      - AttachGateway
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: Public
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: b3fb7511-8567-4a12-8450-a30888f2e6c0
+  PublicRoute:
+    Type: "AWS::EC2::Route"
+    DependsOn:
+      - PublicRouteTable
+      - AttachGateway
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: bd1b8559-65dd-4fcc-a551-dceb43c23eb8
+  PublicSubnet1RouteTableAssociation:
+    Type: "AWS::EC2::SubnetRouteTableAssociation"
+    DependsOn:
+      - PublicRouteTable
+      - PublicSubnet1
+      - AttachGateway
+    Properties:
+      SubnetId: !Ref PublicSubnet1
+      RouteTableId: !Ref PublicRouteTable
+  Ec2Server:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: !Ref AmazonLinuxAMIID
+      InstanceType: !Ref InstanceType
+      SecurityGroupIds:
+        - !Ref Ec2SecurityGroup
+      SubnetId: !Ref PublicSubnet1
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 36f49f6b-fd18-4b16-8872-7e0d5a9ccef9
+  Ec2SecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: VPC Security Group
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - CidrIp: 0.0.0.0/0
+          FromPort: "22"
+          IpProtocol: tcp
+          ToPort: "22"
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 4c1e8512-83b9-4881-9735-fa66c547d484
+  S3Bucket:
+    Type: "AWS::S3::Bucket"
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: f7b0da1b-46f1-40bc-90c9-3d3fc49f1583
+  user1:
+    Type: "AWS::IAM::User"
+    Properties:
+      Path: /spl66/
+      UserName: user-1
+      LoginProfile:
+        Password: Lab-Password1
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: f63e9595-10bf-4b73-b61c-b438e95fa7ef
+  user2:
+    Type: "AWS::IAM::User"
+    Properties:
+      Path: /spl66/
+      UserName: user-2
+      LoginProfile:
+        Password: Lab-Password2
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 0ff03eed-b22b-40e3-b413-abef1df3fd06
+  user3:
+    Type: "AWS::IAM::User"
+    Properties:
+      Path: /spl66/
+      UserName: user-3
+      LoginProfile:
+        Password: Lab-Password3
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 1a2e8a18-fd77-4011-a93d-c5144ca2ea94
+  S3support:
+    Type: "AWS::IAM::Group"
+    Properties:
+      Path: /spl66/
+      GroupName: S3-Support
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonS3ReadOnlyAccess"
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 558503ea-810e-40d7-ab2a-0c3149189712
+  EC2admin:
+    Type: "AWS::IAM::Group"
+    Properties:
+      Path: /spl66/
+      GroupName: EC2-Admin
+      Policies:
+        - PolicyName: EC2-Admin-Policy
+          PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Effect: Allow
+                Action:
+                  - "ec2:Describe*"
+                  - "ec2:StartInstances"
+                  - "ec2:StopInstances"
+                Resource:
+                  - "*"
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 1bad57ea-0afe-48b5-bbf8-d99ec5b67440
+  EC2support:
+    Type: "AWS::IAM::Group"
+    Properties:
+      Path: /spl66/
+      GroupName: EC2-Support
+      ManagedPolicyArns:
+        - "arn:aws:iam::aws:policy/AmazonEC2ReadOnlyAccess"
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: b7e066d7-e37d-4d28-ad11-1f6f9c9412f6
+  IAMUser:
+    Type: "AWS::IAM::User"
+    Properties:
+      UserName: awsstudent
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 0b3ee867-4ee7-423b-b941-6bcb681872d5
+  IAMPolicy:
+    Type: "AWS::IAM::ManagedPolicy"
+    DependsOn: IAMUser
+    Properties:
+      PolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - "iam:AddUserToGroup"
+              - "iam:UpdateGroup"
+              - "iam:UpdateUser"
+              - "iam:*LoginProfile"
+              - "iam:GenerateCredentialReport"
+              - "iam:RemoveUserFromGroup"
+              - "iam:List*"
+              - "iam:Get*"
+              - "cloud9:*"
+              - "CloudFormation:*"
+              - "ec2:Get*"
+              - "ec2:List*"
+              - "ec2:Describe*"
+              - "cloudtrail:GetTrailStatus"
+              - "cloudtrail:DescribeTrails"
+              - "cloudtrail:LookupEvents"
+              - "cloudtrail:ListTags"
+              - "cloudtrail:ListPublicKeys"
+              - "cloudtrail:GetEventSelectors"
+              - "s3:ListAllMyBuckets"
+              - "s3:GetObject"
+              - "s3:GetBucketLocation"
+              - "kms:ListAliases"
+              - "lambda:ListFunctions"
+            Resource: "*"
+            Effect: Allow
+          - Action: "iam:*"
+            Resource:
+              - "arn:aws:iam::*:user/awsstudent"
+              - "arn:aws:iam::*:user/root-qwkl*"
+            Effect: Deny
+          - Action: "s3:ListAllMyBuckets"
+            Resource: "*"
+            Effect: Allow
+          - Action:
+              - "cloudformation:ListStacks"
+              - "cloudformation:DescribeStacks"
+              - "cloudformation:DescribeStackEvents"
+              - "cloudformation:DescribeStackResource"
+              - "cloudformation:DescribeStackResources"
+            Resource: "*"
+            Effect: Allow
+          - Sid: RestrictActions
+            Effect: Deny
+            Action:
+              - "ec2:*Spot*"
+              - "ec2:*ReservedInstances*"
+              - "ec2:*Scheduled*"
+              - "ec2:*Purchase*"
+              - "ec2:EnableFastSnapshotRestores"
+            Resource: "*"
+          - Sid: RestrictInstanceActions
+            Effect: Allow
+            Action:
+              - "ec2:CreateVolume"
+              - "ec2:ModifyVolume"
+              - "ec2:ImportVolume"
+              - "ec2:ModifyVolumeAttribute"
+              - "ec2:ModifyFleet"
+              - "ec2:ImportSnapshot"
+              - "ec2:ResetInstanceAttribute"
+              - "ec2:CreateFleet"
+              - "ec2:CreateLaunchTemplateVersion"
+              - "ec2:EnableVolumeIO"
+              - "ec2:CreateLaunchTemplate"
+              - "ec2:ImportInstance"
+              - "ec2:ModifyInstanceCreditSpecification"
+              - "ec2:ModifyLaunchTemplate"
+              - "ec2:ModifyInstanceAttribute"
+              - "ec2:RebootInstances"
+              - "ec2:RunInstances"
+              - "ec2:StartInstances"
+            Resource: "*"
+            Condition:
+              StringEqualsIfExists:
+                "ec2:Owner": amazon
+              "ForAllValues:StringLikeIfExists":
+                "ec2:InstanceType":
+                  - "*.nano"
+                  - "*.micro"
+                  - "*.small"
+                "ec2:Tenancy": default
+              StringNotEqualsIfExists:
+                "ec2:PlacementGroupStrategy": cluster
+              StringNotEqualsIgnoreCaseIfExists:
+                "ec2:VolumeType":
+                  - io1
+                  - st1
+              NumericLessThanEqualsIfExists:
+                "ec2:VolumeSize": "51"
+      ManagedPolicyName: lab_policy
+      Users:
+        - awsstudent
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: 389d5493-f9c7-455c-a0cb-d87dfaecb2d8
+  IAMUserAccessKey:
+    Type: "AWS::IAM::AccessKey"
+    DependsOn: IAMUser
+    Properties:
+      Status: Active
+      UserName: awsstudent
+    Metadata:
+      "AWS::CloudFormation::Designer":
+        id: bbf4607f-ca53-40a4-b9dd-306b9824e732
+Outputs:
+  InstanceId:
+    Value: !Ref Ec2Server
+  AccessKey:
+    Value:
+      Ref: IAMUserAccessKey
+  SecretKey:
+    Value:
+      "Fn::GetAtt":
+        - IAMUserAccessKey
+        - SecretAccessKey
+Metadata:
+  "AWS::CloudFormation::Designer":
+    0b3ee867-4ee7-423b-b941-6bcb681872d5:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 230
+        "y": 390
+      z: 1
+      embeds: []
+    bbf4607f-ca53-40a4-b9dd-306b9824e732:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 330
+        "y": 390
+      z: 1
+      embeds: []
+      dependson:
+        - 0b3ee867-4ee7-423b-b941-6bcb681872d5
+    389d5493-f9c7-455c-a0cb-d87dfaecb2d8:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 230
+        "y": 490
+      z: 1
+      embeds: []
+      dependson:
+        - 0b3ee867-4ee7-423b-b941-6bcb681872d5
+    b7e066d7-e37d-4d28-ad11-1f6f9c9412f6:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 320
+        "y": 480
+      z: 1
+      embeds: []
+    1bad57ea-0afe-48b5-bbf8-d99ec5b67440:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 400
+        "y": 480
+      z: 1
+      embeds: []
+    558503ea-810e-40d7-ab2a-0c3149189712:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 310
+        "y": 550
+      z: 1
+      embeds: []
+    1a2e8a18-fd77-4011-a93d-c5144ca2ea94:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 480
+        "y": 460
+      z: 1
+      embeds: []
+    0ff03eed-b22b-40e3-b413-abef1df3fd06:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 420
+        "y": 390
+      z: 1
+      embeds: []
+    f63e9595-10bf-4b73-b61c-b438e95fa7ef:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 480
+        "y": 550
+      z: 1
+      embeds: []
+    f7b0da1b-46f1-40bc-90c9-3d3fc49f1583:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 390
+        "y": 550
+      z: 1
+      embeds: []
+    05e33ba1-a0a7-4885-8aab-0683ea448a16:
+      size:
+        width: 140
+        height: 220
+      position:
+        x: 70
+        "y": 390
+      z: 1
+      embeds:
+        - 4c1e8512-83b9-4881-9735-fa66c547d484
+    4c1e8512-83b9-4881-9735-fa66c547d484:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 90
+        "y": 450
+      z: 2
+      parent: 05e33ba1-a0a7-4885-8aab-0683ea448a16
+      embeds: []
+      iscontainedinside:
+        - 05e33ba1-a0a7-4885-8aab-0683ea448a16
+    08032085-6bdb-403d-98d0-e28c59310d40:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 270
+        "y": 220
+      z: 1
+      embeds: []
+      dependson:
+        - 05e33ba1-a0a7-4885-8aab-0683ea448a16
+    bbd16bec-ee4d-4094-9691-40afd6c2cb0c:
+      source:
+        id: 05e33ba1-a0a7-4885-8aab-0683ea448a16
+      target:
+        id: 08032085-6bdb-403d-98d0-e28c59310d40
+    b3fb7511-8567-4a12-8450-a30888f2e6c0:
+      size:
+        width: 150
+        height: 230
+      position:
+        x: 360
+        "y": 100
+      z: 1
+      embeds:
+        - bd1b8559-65dd-4fcc-a551-dceb43c23eb8
+      dependson:
+        - bbd16bec-ee4d-4094-9691-40afd6c2cb0c
+    bd1b8559-65dd-4fcc-a551-dceb43c23eb8:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 390
+        "y": 150
+      z: 2
+      parent: b3fb7511-8567-4a12-8450-a30888f2e6c0
+      embeds: []
+      isassociatedwith:
+        - 08032085-6bdb-403d-98d0-e28c59310d40
+      dependson:
+        - b3fb7511-8567-4a12-8450-a30888f2e6c0
+        - bbd16bec-ee4d-4094-9691-40afd6c2cb0c
+    8b5364e0-21dc-4c98-9095-e152d27d733e:
+      size:
+        width: 190
+        height: 240
+      position:
+        x: 60
+        "y": 90
+      z: 1
+      embeds:
+        - 36f49f6b-fd18-4b16-8872-7e0d5a9ccef9
+      dependson:
+        - bbd16bec-ee4d-4094-9691-40afd6c2cb0c
+    36f49f6b-fd18-4b16-8872-7e0d5a9ccef9:
+      size:
+        width: 60
+        height: 60
+      position:
+        x: 90
+        "y": 150
+      z: 2
+      parent: 8b5364e0-21dc-4c98-9095-e152d27d733e
+      embeds: []
+      isassociatedwith:
+        - 4c1e8512-83b9-4881-9735-fa66c547d484
+      iscontainedinside:
+        - 8b5364e0-21dc-4c98-9095-e152d27d733e
