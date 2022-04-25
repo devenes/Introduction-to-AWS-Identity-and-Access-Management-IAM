@@ -6,7 +6,7 @@
 
 ## AWS Identity and Access Management (IAM)
 
-AWS Identity and Access Management (IAM) is a web service that lets you securely control access to AWS resources for users. People (AWS resources that are available using the IAM authentication ) and use its resources and how they can be used. With the help of IAM you can Share access to the AWS Account, Granular permissions, Security access AWS resources for applications running on Amazon EC2, Credentials works, Credentials for ensuring, Eventual Consistency.
+AWS Identity and Access Management (IAM) is a web service that lets you securely control access to AWS resources for users. People (AWS resources that are available using the IAM authentication) and use its resources and how they can be used. With the help of IAM you can Share access to the AWS Account, Granular permissions, Security access AWS resources for applications running on Amazon EC2, Credentials works, Credentials for ensuring, Eventual Consistency.
 
 ## What kinds of security credentials can IAM users have?
 
